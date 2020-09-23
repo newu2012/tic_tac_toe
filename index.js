@@ -8,9 +8,12 @@ const container = document.getElementById('fieldWrapper');
 
 const gameField = [[], [], []];
 let gameInProgress = false;
+
 let AISwitch = false;
+let AIHardDifficulty = true;
 let THIS_TURN_PLAYER = CROSS;
 let winnerString = `${EMPTY} победил`;
+
 let clickCounter = 0;
 const possibleClicksCount = 3 * 3;
 
@@ -18,14 +21,17 @@ startGame();
 addResetListener();
 addAIListener();
 
-function initGameField(gameField) {
+function makeNewEmptyArray(gameField) {
     let dimension = gameField.length;
     for (let i = 0; i < dimension; i++) {
         gameField[i] = new Array(dimension);
         for (let j = 0; j < dimension; j++)
             gameField[i][j] = EMPTY;
     }
+}
 
+function initGameField(gameField) {
+    makeNewEmptyArray(gameField);
     gameInProgress = true;
     winnerString = `${EMPTY} победил`;
     clickCounter = 0;
@@ -38,28 +44,28 @@ function startGame () {
 }
 
 function setTurn() {
-    if (AISwitch) {
+    if (AISwitch)
         THIS_TURN_PLAYER = PLAYER;
-    }
     else
         THIS_TURN_PLAYER = CROSS;
 }
 
 function changeTurn() {
-    if (AISwitch) {
+    if (AISwitch)
         if (THIS_TURN_PLAYER === PLAYER) {
             THIS_TURN_PLAYER = AI;
-            takeABlindMoveAI();
+            if (AIHardDifficulty)
+                forceAIToASmartMove();
+            else
+                forceAIToABlindMove();
         }
         else
             THIS_TURN_PLAYER = PLAYER;
-    }
-    else {
+    else
         if (THIS_TURN_PLAYER === CROSS)
             THIS_TURN_PLAYER = ZERO;
         else
             THIS_TURN_PLAYER = CROSS;
-    }
 }
 
 function renderGrid (dimension) {
@@ -129,10 +135,49 @@ function checkWinner (gameField) {
                 break;
     }
     function checkFieldDiagonally (gameField) {
-        //TODO Проверка на победу игроков при заполнении всех клеток по любой из диагоналей одним символом
+        let leftDiagonal = '';
+        let rightDiagonal = '';
+        let l = gameField.length;
+
+        for (let i = 0; i < l; i++) {
+            leftDiagonal += gameField[i][i];
+            rightDiagonal += gameField[i][l - 1 - i];
+        }
+        let leftDiagPlayerWins = leftDiagonal === CROSS.repeat(l);
+        let rightDiagPlayerWins = rightDiagonal === CROSS.repeat(l);
+        let leftDiagAIWins = leftDiagonal === ZERO.repeat(l);
+        let rightDiagAIWins = rightDiagonal === ZERO.repeat(l);
+
+        if (leftDiagPlayerWins || rightDiagPlayerWins) {
+            if (AISwitch)
+                setWinner(PLAYER);
+            else
+                setWinner(CROSS);
+            if (leftDiagPlayerWins)
+                paintWinningCells(1, 1, false, 'left');
+            else
+                paintWinningCells(1, 1, false, 'right');
+        }
+        else if (leftDiagAIWins || rightDiagAIWins) {
+            if (AISwitch)
+                setWinner(AI);
+            else
+                setWinner(ZERO);
+            if (leftDiagAIWins)
+                paintWinningCells(1, 1, false, 'left');
+            else
+                paintWinningCells(1, 1, false, 'right');
+        }
+
     }
-    function paintWinningCells (line, startIndex, col = false) {
-        if (col === true)
+    function paintWinningCells (line, startIndex, col = false, diag = 'none') {
+        if (diag === 'left')
+            for (let i = 0; i < gameField.length; i++)
+                findCell(i, i).style.color = 'Red';
+        else if (diag === 'right')
+            for (let i = 0; i < gameField.length; i++)
+                findCell(i, gameField.length - 1 - i).style.color = 'Red';
+        else if (col === true)
             for (let i = 0; i < line.length; i++)
                 findCell(i, startIndex).style.color = 'Red';
         else
@@ -185,8 +230,8 @@ function cellClickHandler (row, col) {
     turnHandler();
 }
 
-function takeABlindMoveAI () {
-    function extracted(gameField, index) {
+function forceAIToABlindMove () {
+    function findEmptyCell(gameField, index) {
         let flatArray = gameField.flat(2);
         for (let i = index; i < flatArray.length; i += gameField.length) {
             if (flatArray[i] === EMPTY) {
@@ -196,14 +241,64 @@ function takeABlindMoveAI () {
         }
     }
 
-
-
     for (let i = 0; i < gameField.length; i++)
-        if (extracted(gameField, i)) {
+        if (findEmptyCell(gameField, i)) {
             turnHandler();
             return
         }
+}
 
+function forceAIToASmartMove () {
+    let rowPlayerCount = new Array(gameField.length).fill(0);
+    let rowAICount = new Array(gameField.length).fill(0);
+    let columnPlayerCount = new Array(gameField.length).fill(0);
+    let columnAICount = new Array(gameField.length).fill(0);
+
+    for (let i = 0; i < gameField.length; i++)
+        for (let j = 0; j < gameField.length; j++) {
+            if (gameField[i][j] === CROSS) {
+                rowPlayerCount[i]++;
+                columnPlayerCount[j]++;
+            }
+            if (gameField[i][j] === ZERO) {
+                rowAICount[i]++;
+                columnAICount[j]++;
+            }
+            if (rowPlayerCount[i] + rowAICount[i] === gameField.length)
+                rowPlayerCount[i] = 0;
+            if (columnPlayerCount[j] + columnAICount[j] === gameField.length)
+                columnPlayerCount[j] = 0;
+        }
+
+    console.log(`[${rowPlayerCount}, ${columnPlayerCount}]`);
+
+    let maxCountInRows = Math.max.apply(null, rowPlayerCount);
+    let maxCountInColumns = Math.max.apply(null, columnPlayerCount);
+
+    if (maxCountInRows > maxCountInColumns) {
+        for (let i = 0; i < gameField.length; i++) {
+            if (maxCountInRows === rowPlayerCount[i])
+                for (let j = 0; j < gameField.length; j++){
+                    if (gameField[i][j] === EMPTY) {
+                        tryClickOnCell(i, j);
+                        turnHandler();
+                        return;
+                    }
+                }
+        }
+    }
+    else if (maxCountInRows <= maxCountInColumns) {
+        for (let i = 0; i < gameField.length; i++) {
+            if (maxCountInColumns === columnPlayerCount[i])
+                for (let j = 0; j < gameField.length; j++){
+                    if (gameField[j][i] === EMPTY) {
+                        tryClickOnCell(j, i);
+                        turnHandler();
+                        return;
+                    }
+                }
+        }
+    }
 }
 
 function renderSymbolInCell (symbol, row, col, color = '#333') {
