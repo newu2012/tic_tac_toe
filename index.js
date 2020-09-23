@@ -1,12 +1,15 @@
 const CROSS = 'X';
 const ZERO = 'O';
 const EMPTY = ' ';
+const PLAYER = 'Игрок'
+const AI = 'Компьютер'
 
 const container = document.getElementById('fieldWrapper');
 
 const gameField = [[], [], []];
 let gameInProgress = false;
 let AISwitch = false;
+let THIS_TURN_PLAYER = CROSS;
 let winnerString = `${EMPTY} победил`;
 let clickCounter = 0;
 const possibleClicksCount = 3 * 3;
@@ -15,24 +18,48 @@ startGame();
 addResetListener();
 addAIListener();
 
-function initGameField(dimension, gameField) {
+function initGameField(gameField) {
+    let dimension = gameField.length;
     for (let i = 0; i < dimension; i++) {
         gameField[i] = new Array(dimension);
-        for (let j = 0; j < dimension; j++) {
+        for (let j = 0; j < dimension; j++)
             gameField[i][j] = EMPTY;
-
-        }
     }
 
     gameInProgress = true;
     winnerString = `${EMPTY} победил`;
     clickCounter = 0;
-    console.log(gameField, 'Field initialized');
 }
 
 function startGame () {
-    initGameField(3, gameField);
-    renderGrid(3);
+    initGameField(gameField);
+    renderGrid(gameField.length);
+    setTurn();
+}
+
+function setTurn() {
+    if (AISwitch) {
+        THIS_TURN_PLAYER = PLAYER;
+    }
+    else
+        THIS_TURN_PLAYER = CROSS;
+}
+
+function changeTurn() {
+    if (AISwitch) {
+        if (THIS_TURN_PLAYER === PLAYER) {
+            THIS_TURN_PLAYER = AI;
+            takeABlindMoveAI();
+        }
+        else
+            THIS_TURN_PLAYER = PLAYER;
+    }
+    else {
+        if (THIS_TURN_PLAYER === CROSS)
+            THIS_TURN_PLAYER = ZERO;
+        else
+            THIS_TURN_PLAYER = CROSS;
+    }
 }
 
 function renderGrid (dimension) {
@@ -55,39 +82,51 @@ function checkWinner (gameField) {
         for (let i = 0; i < gameField.length; i++) {
             let row = gameField[i].join('');
             if (row === CROSS.repeat(gameField.length)) {
-                setWinner(CROSS);
+                if (AISwitch)
+                    setWinner(PLAYER);
+                else
+                    setWinner(CROSS);
                 paintWinningCells(row, i);
-                gameInProgress = false;
                 break;
             }
             else if (row === ZERO.repeat(gameField.length)) {
-                setWinner(ZERO);
+                if (AISwitch)
+                    setWinner(AI);
+                else
+                    setWinner(ZERO);
                 paintWinningCells(row, i);
-                gameInProgress = false;
                 break;
             }
         }
     }
-    function checkFieldVertically (gameField, index) {
-        let flatArray = gameField.flat(2);
-        let word = '';
-        for (let i = index; i < flatArray.length; i += gameField.length) {
-            if (flatArray[i] === EMPTY)
-                continue;
-            word += flatArray[i];
+    function checkFieldVertically (gameField) {
+        function checkColumn(gameField, index) {
+            let flatArray = gameField.flat(2);
+            let word = '';
+            for (let i = index; i < flatArray.length; i += gameField.length) {
+                if (flatArray[i] === EMPTY)
+                    continue;
+                word += flatArray[i];
+            }
+            if (word === CROSS.repeat(gameField.length)) {
+                if (AISwitch)
+                    setWinner(PLAYER);
+                else
+                    setWinner(CROSS);
+                paintWinningCells(gameField, index, true);
+                return true;
+            } else if (word === ZERO.repeat(gameField.length)) {
+                if (AISwitch)
+                    setWinner(AI);
+                else
+                    setWinner(ZERO);
+                paintWinningCells(gameField, index, true);
+                return true;
+            }
         }
-        if (word === CROSS.repeat(gameField.length)) {
-            setWinner(CROSS);
-            paintWinningCells(gameField, index, true);
-            gameInProgress = false;
-            return true;
-        }
-        else if (word === ZERO.repeat(gameField.length)) {
-            setWinner(ZERO);
-            paintWinningCells(gameField, index, true);
-            gameInProgress = false;
-            return true;
-        }
+        for (let i = 0; i < gameField.length; i++)
+            if (checkColumn(gameField, i))
+                break;
     }
     function checkFieldDiagonally (gameField) {
         //TODO Проверка на победу игроков при заполнении всех клеток по любой из диагоналей одним символом
@@ -102,51 +141,76 @@ function checkWinner (gameField) {
     }
     function setWinner (winner) {
         winnerString = `${winner} победил`;
+        gameInProgress = false;
     }
     function tryAnnounceWinner () {
-        console.log(winnerString);
-        if (winnerString !== `${EMPTY} победил`)
+        if (winnerString !== `${EMPTY} победил`) {
+            console.log(winnerString);
             alert(winnerString);
+        }
     }
 
 
     checkFieldHorizontally(gameField);
-    for (let i = 0; i < gameField.length; i++)
-        if (checkFieldVertically(gameField, i))
-            break;
+    checkFieldVertically(gameField);
     checkFieldDiagonally(gameField);
     tryAnnounceWinner();
 }
 
-function cellClickHandler (row, col) {
-    function tryClickOnCell() {
-        if (gameField[row][col] === EMPTY) {
-            let fieldState = clickCounter % 2 ? ZERO : CROSS;
-            gameField[row][col] = fieldState;
+function tryClickOnCell(row, col) {
+    let fieldState = clickCounter % 2 ? ZERO : CROSS;
+    gameField[row][col] = fieldState;
+    console.log(`${THIS_TURN_PLAYER} clicked on cell: ${row}, ${col}`);
+    console.log(gameField);
+    clickCounter++;
+    renderSymbolInCell(fieldState, row, col);
+}
 
-            console.log(`Clicked on cell: ${row}, ${col}`);
-            console.log(gameField);
-            clickCounter++;
-            renderSymbolInCell(fieldState, row, col);
-        }
-    }
-
+function turnHandler () {
     if (gameInProgress) {
-        tryClickOnCell();
         checkWinner(gameField);
-        if (gameInProgress)
+        if (gameInProgress) {
             if (clickCounter === possibleClicksCount)
                 alert('Победила дружба');
+            changeTurn();
+        }
     }
     else
         alert('Игра уже окончена!');
 }
 
+function cellClickHandler (row, col) {
+    if (gameField[row][col] === EMPTY)
+        tryClickOnCell(row, col);
+    turnHandler();
+}
+
+function takeABlindMoveAI () {
+    function extracted(gameField, index) {
+        let flatArray = gameField.flat(2);
+        for (let i = index; i < flatArray.length; i += gameField.length) {
+            if (flatArray[i] === EMPTY) {
+                tryClickOnCell(Math.floor(i / gameField.length), i % gameField.length);
+                return true;
+            }
+        }
+    }
+
+
+
+    for (let i = 0; i < gameField.length; i++)
+        if (extracted(gameField, i)) {
+            turnHandler();
+            return
+        }
+
+}
+
 function renderSymbolInCell (symbol, row, col, color = '#333') {
     const targetCell = findCell(row, col);
-
     targetCell.textContent = symbol;
     targetCell.style.color = color;
+
 }
 
 function findCell (row, col) {
