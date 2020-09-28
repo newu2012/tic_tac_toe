@@ -7,6 +7,7 @@ const AI = 'Компьютер'
 const container = document.getElementById('fieldWrapper');
 
 const INITIAL_GAMEFIELD_LENGTH = 3;
+let autoEnlargement = false;
 
 let gameField;
 let gameInProgress = false;
@@ -20,6 +21,7 @@ let clickCounter = 0;
 let possibleClicksCount;
 
 startGame();
+addAutoEnlargementListener();
 addResetListener();
 addAIListener();
 
@@ -44,7 +46,9 @@ function initGameField(dimension) {
     possibleClicksCount = gameField.length * gameField.length;
 }
 
-function enlargeGameField(gameField) {
+function tryEnlargeGameField(gameField) {
+    if (!autoEnlargement)
+        return;
     let lastRow = [];
     for (let i = 0; i < gameField.length; i++) {
         gameField[i].push(EMPTY);
@@ -55,7 +59,7 @@ function enlargeGameField(gameField) {
 
     console.log(`Enlarged Array: ${gameField}`);
     updatePossibleClicksCount();
-    reRenderGrid(gameField.length);
+    renderGrid(gameField.length);
 }
 
 function updatePossibleClicksCount () {
@@ -94,21 +98,6 @@ function changeTurn() {
 }
 
 function renderGrid (dimension) {
-    container.innerHTML = '';
-
-    for (let i = 0; i < dimension; i++) {
-        const row = document.createElement('tr');
-        for (let j = 0; j < dimension; j++) {
-            const cell = document.createElement('td');
-            cell.textContent = EMPTY;
-            cell.addEventListener('click', () => cellClickHandler(i, j));
-            row.appendChild(cell);
-        }
-        container.appendChild(row);
-    }
-}
-
-function reRenderGrid (dimension) {
     container.innerHTML = '';
 
     for (let i = 0; i < dimension; i++) {
@@ -249,7 +238,7 @@ function checkWinner (gameField) {
     checkFieldHorizontally(gameField);
     checkFieldVertically(gameField);
     checkFieldDiagonally(gameField);
-    tryAnnounceWinner();
+    setTimeout(tryAnnounceWinner, 100);
 }
 
 function tryClickOnCell(row, col) {
@@ -266,23 +255,20 @@ function turnHandler () {
         checkWinner(gameField);
         if (gameInProgress) {
             if (clickCounter > possibleClicksCount / 2)
-                enlargeGameField(gameField);
+                tryEnlargeGameField(gameField);
             if (clickCounter === possibleClicksCount)
                 alert('Победила дружба');
             changeTurn();
         }
     }
-    else
-        alert('Игра уже окончена!');
 }
 
 function cellClickHandler (row, col) {
-    if (gameField[row][col] === EMPTY) {
-        tryClickOnCell(row, col);
-        turnHandler();
-    }
-    else
-        alert('Нажмите на пустую клетку');
+    if (gameInProgress)
+        if (gameField[row][col] === EMPTY) {
+            tryClickOnCell(row, col);
+            turnHandler();
+        }
 }
 
 function forceAIToABlindMove () {
@@ -410,6 +396,11 @@ function addResetListener () {
     resetButton.addEventListener('click', resetClickHandler);
 }
 
+function addAutoEnlargementListener () {
+    const autoEnlargementButton = document.getElementById('auto_enlargement');
+    autoEnlargementButton.addEventListener('click', autoEnlargementClickHandler);
+}
+
 function addAIListener () {
     const AISwitch = document.getElementById('AI');
     AISwitch.addEventListener('change', AISwitchChangeHandler);
@@ -420,36 +411,19 @@ function resetClickHandler () {
     console.log('reset!');
 }
 
+function autoEnlargementClickHandler () {
+    autoEnlargement = !autoEnlargement;
+    const autoEnlargementButton = document.getElementById('auto_enlargement');
+    if (autoEnlargement)
+        autoEnlargementButton.style.backgroundColor = 'LightGreen';
+    else
+        autoEnlargementButton.style.backgroundColor = 'White';
+}
+
 function AISwitchChangeHandler () {
     AISwitch = !AISwitch;
     startGame();
     console.log(`AI switched to ${AISwitch}`);
-}
-
-/* Test Function */
-/* Победа первого игрока */
-function testWin () {
-    clickOnCell(0, 2);
-    clickOnCell(0, 0);
-    clickOnCell(2, 0);
-    clickOnCell(1, 1);
-    clickOnCell(2, 2);
-    clickOnCell(1, 2);
-    clickOnCell(2, 1);
-}
-
-/* Ничья */
-function testDraw () {
-    clickOnCell(2, 0);
-    clickOnCell(1, 0);
-    clickOnCell(1, 1);
-    clickOnCell(0, 0);
-    clickOnCell(1, 2);
-    clickOnCell(1, 2);
-    clickOnCell(0, 2);
-    clickOnCell(0, 1);
-    clickOnCell(2, 1);
-    clickOnCell(2, 2);
 }
 
 function clickOnCell (row, col) {
