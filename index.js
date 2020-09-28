@@ -6,7 +6,7 @@ const AI = 'Компьютер'
 
 const container = document.getElementById('fieldWrapper');
 
-const GAMEFIELD_LENGTH = 3;
+const INITIAL_GAMEFIELD_LENGTH = 3;
 
 let gameField;
 let gameInProgress = false;
@@ -63,7 +63,7 @@ function updatePossibleClicksCount () {
 }
 
 function startGame () {
-    initGameField(GAMEFIELD_LENGTH);
+    initGameField(INITIAL_GAMEFIELD_LENGTH);
     renderGrid(gameField.length);
     setTurn();
 }
@@ -331,13 +331,13 @@ function forceAIToASmartMove () {
                 columnPlayerCount[j] = 0;
         }
     for (let i = 0; i < gameField.length; i++) {
-        if (gameField[i][i] === CROSS)
-            lDiagonalAICount[i] = 1;
-        if (gameField[i][gameField.length - i] === CROSS)
-            rDiagonalAICount[i] = 1;
         if (gameField[i][i] === ZERO)
-            lDiagonalPlayerCount[i] = 1;
+            lDiagonalAICount[i] = 1;
         if (gameField[i][gameField.length - i] === ZERO)
+            rDiagonalAICount[i] = 1;
+        if (gameField[i][i] === CROSS)
+            lDiagonalPlayerCount[i] = 1;
+        if (gameField[i][gameField.length - i] === CROSS)
             rDiagonalPlayerCount[i] = 1;
     }
 
@@ -345,8 +345,29 @@ function forceAIToASmartMove () {
 
     let maxCountInRows = Math.max.apply(null, rowPlayerCount);
     let maxCountInColumns = Math.max.apply(null, columnPlayerCount);
+    let maxCountInLeftDiag = Math.max.apply(null, lDiagonalPlayerCount);
+    let maxCountInRightDiag = Math.max.apply(null, rDiagonalPlayerCount);
+    let maxCountInDiag = Math.max(maxCountInLeftDiag, maxCountInRightDiag);
 
-    if (maxCountInRows > maxCountInColumns) {
+    if (maxCountInDiag >= maxCountInColumns && maxCountInDiag >= maxCountInRows) {
+        for (let i = 0; i < gameField.length; i++) {
+            if (maxCountInLeftDiag > maxCountInRightDiag) {
+                if (gameField[i][i] === EMPTY) {
+                    tryClickOnCell(i, i);
+                    turnHandler();
+                    return;
+                }
+            }
+            else if (maxCountInLeftDiag <= maxCountInRightDiag){
+                if (gameField[i][gameField.length - i] === EMPTY) {
+                    tryClickOnCell(i, gameField.length - i);
+                    turnHandler();
+                    return;
+                }
+            }
+        }
+    }
+    else if (maxCountInRows > maxCountInColumns) {
         for (let i = 0; i < gameField.length; i++) {
             if (maxCountInRows === rowPlayerCount[i])
                 for (let j = 0; j < gameField.length; j++){
