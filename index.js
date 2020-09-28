@@ -123,91 +123,97 @@ function renderGrid (dimension) {
 }
 
 function checkWinner (gameField) {
-    function checkFieldHorizontally (gameField) {
-        for (let i = 0; i < gameField.length; i++) {
-            let row = gameField[i].join('');
-            if (row === CROSS.repeat(gameField.length)) {
+    function checkField (gameField) {
+        function checkFieldHorizontally (gameField) {
+            for (let i = 0; i < gameField.length; i++) {
+                let row = gameField[i].join('');
+                if (row === CROSS.repeat(gameField.length)) {
+                    if (AISwitch)
+                        setWinner(PLAYER);
+                    else
+                        setWinner(CROSS);
+                    paintWinningCells(row, i);
+                    break;
+                }
+                else if (row === ZERO.repeat(gameField.length)) {
+                    if (AISwitch)
+                        setWinner(AI);
+                    else
+                        setWinner(ZERO);
+                    paintWinningCells(row, i);
+                    break;
+                }
+            }
+        }
+        function checkFieldVertically (gameField) {
+            function checkColumn(gameField, index) {
+                let flatArray = gameField.flat(2);
+                let word = '';
+                for (let i = index; i < flatArray.length; i += gameField.length) {
+                    if (flatArray[i] === EMPTY)
+                        continue;
+                    word += flatArray[i];
+                }
+                if (word === CROSS.repeat(gameField.length)) {
+                    if (AISwitch)
+                        setWinner(PLAYER);
+                    else
+                        setWinner(CROSS);
+                    paintWinningCells(gameField, index, true);
+                    return true;
+                } else if (word === ZERO.repeat(gameField.length)) {
+                    if (AISwitch)
+                        setWinner(AI);
+                    else
+                        setWinner(ZERO);
+                    paintWinningCells(gameField, index, true);
+                    return true;
+                }
+            }
+            for (let i = 0; i < gameField.length; i++)
+                if (checkColumn(gameField, i))
+                    break;
+        }
+        function checkFieldDiagonally (gameField) {
+            let leftDiagonal = '';
+            let rightDiagonal = '';
+            let l = gameField.length;
+
+            for (let i = 0; i < l; i++) {
+                leftDiagonal += gameField[i][i];
+                rightDiagonal += gameField[i][l - 1 - i];
+            }
+            let leftDiagPlayerWins = leftDiagonal === CROSS.repeat(l);
+            let rightDiagPlayerWins = rightDiagonal === CROSS.repeat(l);
+            let leftDiagAIWins = leftDiagonal === ZERO.repeat(l);
+            let rightDiagAIWins = rightDiagonal === ZERO.repeat(l);
+
+            if (leftDiagPlayerWins || rightDiagPlayerWins) {
                 if (AISwitch)
                     setWinner(PLAYER);
                 else
                     setWinner(CROSS);
-                paintWinningCells(row, i);
-                break;
+                if (leftDiagPlayerWins)
+                    paintWinningCells(1, 1, false, 'left');
+                else
+                    paintWinningCells(1, 1, false, 'right');
             }
-            else if (row === ZERO.repeat(gameField.length)) {
+            else if (leftDiagAIWins || rightDiagAIWins) {
                 if (AISwitch)
                     setWinner(AI);
                 else
                     setWinner(ZERO);
-                paintWinningCells(row, i);
-                break;
-            }
-        }
-    }
-    function checkFieldVertically (gameField) {
-        function checkColumn(gameField, index) {
-            let flatArray = gameField.flat(2);
-            let word = '';
-            for (let i = index; i < flatArray.length; i += gameField.length) {
-                if (flatArray[i] === EMPTY)
-                    continue;
-                word += flatArray[i];
-            }
-            if (word === CROSS.repeat(gameField.length)) {
-                if (AISwitch)
-                    setWinner(PLAYER);
+                if (leftDiagAIWins)
+                    paintWinningCells(1, 1, false, 'left');
                 else
-                    setWinner(CROSS);
-                paintWinningCells(gameField, index, true);
-                return true;
-            } else if (word === ZERO.repeat(gameField.length)) {
-                if (AISwitch)
-                    setWinner(AI);
-                else
-                    setWinner(ZERO);
-                paintWinningCells(gameField, index, true);
-                return true;
+                    paintWinningCells(1, 1, false, 'right');
             }
-        }
-        for (let i = 0; i < gameField.length; i++)
-            if (checkColumn(gameField, i))
-                break;
-    }
-    function checkFieldDiagonally (gameField) {
-        let leftDiagonal = '';
-        let rightDiagonal = '';
-        let l = gameField.length;
 
-        for (let i = 0; i < l; i++) {
-            leftDiagonal += gameField[i][i];
-            rightDiagonal += gameField[i][l - 1 - i];
-        }
-        let leftDiagPlayerWins = leftDiagonal === CROSS.repeat(l);
-        let rightDiagPlayerWins = rightDiagonal === CROSS.repeat(l);
-        let leftDiagAIWins = leftDiagonal === ZERO.repeat(l);
-        let rightDiagAIWins = rightDiagonal === ZERO.repeat(l);
-
-        if (leftDiagPlayerWins || rightDiagPlayerWins) {
-            if (AISwitch)
-                setWinner(PLAYER);
-            else
-                setWinner(CROSS);
-            if (leftDiagPlayerWins)
-                paintWinningCells(1, 1, false, 'left');
-            else
-                paintWinningCells(1, 1, false, 'right');
-        }
-        else if (leftDiagAIWins || rightDiagAIWins) {
-            if (AISwitch)
-                setWinner(AI);
-            else
-                setWinner(ZERO);
-            if (leftDiagAIWins)
-                paintWinningCells(1, 1, false, 'left');
-            else
-                paintWinningCells(1, 1, false, 'right');
         }
 
+        checkFieldHorizontally(gameField);
+        checkFieldVertically(gameField);
+        checkFieldDiagonally(gameField);
     }
     function paintWinningCells (line, startIndex, col = false, diag = 'none') {
         if (diag === 'left')
@@ -228,17 +234,15 @@ function checkWinner (gameField) {
         gameInProgress = false;
     }
     function tryAnnounceWinner () {
-        if (winnerString !== `${EMPTY} победил`) {
-            console.log(winnerString);
-            alert(winnerString);
-        }
+        if (winnerString !== `${EMPTY} победил`)
+            setTimeout(announceWinner, 10);
+    }
+    function announceWinner () {
+        alert(winnerString);
     }
 
-
-    checkFieldHorizontally(gameField);
-    checkFieldVertically(gameField);
-    checkFieldDiagonally(gameField);
-    setTimeout(tryAnnounceWinner, 100);
+    checkField(gameField);
+    tryAnnounceWinner();
 }
 
 function tryClickOnCell(row, col) {
@@ -296,10 +300,10 @@ function forceAIToASmartMove () {
     let columnPlayerCount = new Array(gameField.length).fill(0);
     let columnAICount = new Array(gameField.length).fill(0);
 
-    let lDiagonalAICount = new Array(gameField.length).fill(0);
-    let rDiagonalAICount = new Array(gameField.length).fill(0);
-    let lDiagonalPlayerCount = new Array(gameField.length).fill(0);
-    let rDiagonalPlayerCount = new Array(gameField.length).fill(0);
+    let lDiagonalAICount = 0;
+    let rDiagonalAICount = 0;
+    let lDiagonalPlayerCount = 0;
+    let rDiagonalPlayerCount = 0;
 
     for (let i = 0; i < gameField.length; i++)
         for (let j = 0; j < gameField.length; j++) {
@@ -318,42 +322,40 @@ function forceAIToASmartMove () {
         }
     for (let i = 0; i < gameField.length; i++) {
         if (gameField[i][i] === ZERO)
-            lDiagonalAICount[i] = 1;
-        if (gameField[i][gameField.length - i] === ZERO)
-            rDiagonalAICount[i] = 1;
+            lDiagonalAICount++;
+        if (gameField[i][gameField.length - i - 1] === ZERO)
+            rDiagonalAICount++;
         if (gameField[i][i] === CROSS)
-            lDiagonalPlayerCount[i] = 1;
-        if (gameField[i][gameField.length - i] === CROSS)
-            rDiagonalPlayerCount[i] = 1;
+            lDiagonalPlayerCount++;
+        if (gameField[i][gameField.length - i - 1] === CROSS)
+            rDiagonalPlayerCount++;
     }
 
     console.log(`[${rowPlayerCount}, ${columnPlayerCount}]`);
 
     let maxCountInRows = Math.max.apply(null, rowPlayerCount);
     let maxCountInColumns = Math.max.apply(null, columnPlayerCount);
-    let maxCountInLeftDiag = Math.max.apply(null, lDiagonalPlayerCount);
-    let maxCountInRightDiag = Math.max.apply(null, rDiagonalPlayerCount);
-    let maxCountInDiag = Math.max(maxCountInLeftDiag, maxCountInRightDiag);
+    let maxCountInDiag = Math.max(lDiagonalPlayerCount, rDiagonalPlayerCount);
 
     if (maxCountInDiag >= maxCountInColumns && maxCountInDiag >= maxCountInRows) {
         for (let i = 0; i < gameField.length; i++) {
-            if (maxCountInLeftDiag > maxCountInRightDiag) {
+            if (lDiagonalPlayerCount > rDiagonalPlayerCount) {
                 if (gameField[i][i] === EMPTY) {
                     tryClickOnCell(i, i);
                     turnHandler();
                     return;
                 }
             }
-            else if (maxCountInLeftDiag <= maxCountInRightDiag){
-                if (gameField[i][gameField.length - i] === EMPTY) {
-                    tryClickOnCell(i, gameField.length - i);
+            else if (lDiagonalPlayerCount <= rDiagonalPlayerCount){
+                if (gameField[i][gameField.length - i - 1] === EMPTY) {
+                    tryClickOnCell(i, gameField.length - i - 1);
                     turnHandler();
                     return;
                 }
             }
         }
     }
-    else if (maxCountInRows > maxCountInColumns) {
+    if (maxCountInRows > maxCountInColumns) {
         for (let i = 0; i < gameField.length; i++) {
             if (maxCountInRows === rowPlayerCount[i])
                 for (let j = 0; j < gameField.length; j++){
@@ -365,7 +367,7 @@ function forceAIToASmartMove () {
                 }
         }
     }
-    else if (maxCountInRows <= maxCountInColumns) {
+    if (maxCountInRows <= maxCountInColumns) {
         for (let i = 0; i < gameField.length; i++) {
             if (maxCountInColumns === columnPlayerCount[i])
                 for (let j = 0; j < gameField.length; j++){
@@ -424,8 +426,4 @@ function AISwitchChangeHandler () {
     AISwitch = !AISwitch;
     startGame();
     console.log(`AI switched to ${AISwitch}`);
-}
-
-function clickOnCell (row, col) {
-    findCell(row, col).click();
 }
