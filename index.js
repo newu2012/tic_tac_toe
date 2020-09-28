@@ -6,16 +6,18 @@ const AI = 'Компьютер'
 
 const container = document.getElementById('fieldWrapper');
 
-const gameField = [[], [], []];
+const GAMEFIELD_LENGTH = 3;
+
+let gameField;
 let gameInProgress = false;
 
 let AISwitch = false;
 let AIHardDifficulty = true;
-let THIS_TURN_PLAYER = CROSS;
+let thisTurnPlayer = CROSS;
 let winnerString = `${EMPTY} победил`;
 
 let clickCounter = 0;
-const possibleClicksCount = 3 * 3;
+let possibleClicksCount;
 
 startGame();
 addResetListener();
@@ -30,42 +32,65 @@ function makeNewEmptyArray(gameField) {
     }
 }
 
-function initGameField(gameField) {
+function initGameField(dimension) {
+    gameField = [];
+    for (let i = 0; i < dimension; i++)
+        gameField.push(new Array(dimension));
     makeNewEmptyArray(gameField);
+
     gameInProgress = true;
     winnerString = `${EMPTY} победил`;
     clickCounter = 0;
+    possibleClicksCount = gameField.length * gameField.length;
+}
+
+function enlargeGameField(gameField) {
+    let lastRow = [];
+    for (let i = 0; i < gameField.length; i++) {
+        gameField[i].push(EMPTY);
+        lastRow.push(EMPTY);
+    }
+    lastRow.push(EMPTY);
+    gameField.push(lastRow);
+
+    console.log(`Enlarged Array: ${gameField}`);
+    updatePossibleClicksCount();
+    reRenderGrid(gameField.length);
+}
+
+function updatePossibleClicksCount () {
+    possibleClicksCount = gameField.length * gameField.length;
 }
 
 function startGame () {
-    initGameField(gameField);
+    initGameField(GAMEFIELD_LENGTH);
     renderGrid(gameField.length);
     setTurn();
 }
 
 function setTurn() {
     if (AISwitch)
-        THIS_TURN_PLAYER = PLAYER;
+        thisTurnPlayer = PLAYER;
     else
-        THIS_TURN_PLAYER = CROSS;
+        thisTurnPlayer = CROSS;
 }
 
 function changeTurn() {
     if (AISwitch)
-        if (THIS_TURN_PLAYER === PLAYER) {
-            THIS_TURN_PLAYER = AI;
+        if (thisTurnPlayer === PLAYER) {
+            thisTurnPlayer = AI;
             if (AIHardDifficulty)
                 forceAIToASmartMove();
             else
                 forceAIToABlindMove();
         }
         else
-            THIS_TURN_PLAYER = PLAYER;
+            thisTurnPlayer = PLAYER;
     else
-        if (THIS_TURN_PLAYER === CROSS)
-            THIS_TURN_PLAYER = ZERO;
+        if (thisTurnPlayer === CROSS)
+            thisTurnPlayer = ZERO;
         else
-            THIS_TURN_PLAYER = CROSS;
+            thisTurnPlayer = CROSS;
 }
 
 function renderGrid (dimension) {
@@ -76,6 +101,31 @@ function renderGrid (dimension) {
         for (let j = 0; j < dimension; j++) {
             const cell = document.createElement('td');
             cell.textContent = EMPTY;
+            cell.addEventListener('click', () => cellClickHandler(i, j));
+            row.appendChild(cell);
+        }
+        container.appendChild(row);
+    }
+}
+
+function reRenderGrid (dimension) {
+    container.innerHTML = '';
+
+    for (let i = 0; i < dimension; i++) {
+        const row = document.createElement('tr');
+        for (let j = 0; j < dimension; j++) {
+            const cell = document.createElement('td');
+            switch (gameField[i][j]){
+                case EMPTY:
+                    cell.textContent = EMPTY;
+                    break;
+                case CROSS:
+                    cell.textContent = CROSS;
+                    break;
+                case ZERO:
+                    cell.textContent = ZERO;
+                    break;
+            }
             cell.addEventListener('click', () => cellClickHandler(i, j));
             row.appendChild(cell);
         }
@@ -205,7 +255,7 @@ function checkWinner (gameField) {
 function tryClickOnCell(row, col) {
     let fieldState = clickCounter % 2 ? ZERO : CROSS;
     gameField[row][col] = fieldState;
-    console.log(`${THIS_TURN_PLAYER} clicked on cell: ${row}, ${col}`);
+    console.log(`${thisTurnPlayer} clicked on cell: ${row}, ${col}`);
     console.log(gameField);
     clickCounter++;
     renderSymbolInCell(fieldState, row, col);
@@ -215,6 +265,8 @@ function turnHandler () {
     if (gameInProgress) {
         checkWinner(gameField);
         if (gameInProgress) {
+            if (clickCounter > possibleClicksCount / 2)
+                enlargeGameField(gameField);
             if (clickCounter === possibleClicksCount)
                 alert('Победила дружба');
             changeTurn();
@@ -225,9 +277,12 @@ function turnHandler () {
 }
 
 function cellClickHandler (row, col) {
-    if (gameField[row][col] === EMPTY)
+    if (gameField[row][col] === EMPTY) {
         tryClickOnCell(row, col);
-    turnHandler();
+        turnHandler();
+    }
+    else
+        alert('Нажмите на пустую клетку');
 }
 
 function forceAIToABlindMove () {
@@ -251,8 +306,14 @@ function forceAIToABlindMove () {
 function forceAIToASmartMove () {
     let rowPlayerCount = new Array(gameField.length).fill(0);
     let rowAICount = new Array(gameField.length).fill(0);
+
     let columnPlayerCount = new Array(gameField.length).fill(0);
     let columnAICount = new Array(gameField.length).fill(0);
+
+    let lDiagonalAICount = new Array(gameField.length).fill(0);
+    let rDiagonalAICount = new Array(gameField.length).fill(0);
+    let lDiagonalPlayerCount = new Array(gameField.length).fill(0);
+    let rDiagonalPlayerCount = new Array(gameField.length).fill(0);
 
     for (let i = 0; i < gameField.length; i++)
         for (let j = 0; j < gameField.length; j++) {
@@ -269,6 +330,16 @@ function forceAIToASmartMove () {
             if (columnPlayerCount[j] + columnAICount[j] === gameField.length)
                 columnPlayerCount[j] = 0;
         }
+    for (let i = 0; i < gameField.length; i++) {
+        if (gameField[i][i] === CROSS)
+            lDiagonalAICount[i] = 1;
+        if (gameField[i][gameField.length - i] === CROSS)
+            rDiagonalAICount[i] = 1;
+        if (gameField[i][i] === ZERO)
+            lDiagonalPlayerCount[i] = 1;
+        if (gameField[i][gameField.length - i] === ZERO)
+            rDiagonalPlayerCount[i] = 1;
+    }
 
     console.log(`[${rowPlayerCount}, ${columnPlayerCount}]`);
 
