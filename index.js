@@ -33,7 +33,12 @@ prepareGame();
 
 function tryChangeInitialGameFieldLength () {
     let lengthBeforeChange = initialGameFieldLength;
-    initialGameFieldLength = prompt('Какой длины будет начальное поле?', "3");
+    let newLength = +prompt('Какой длины будет начальное поле?', "3");
+    if (isNaN(newLength)) {
+        alert('Неверный размер поля!')
+        return;
+    }
+    initialGameFieldLength = newLength;
     if (lengthBeforeChange !== initialGameFieldLength)
         if (confirm('Желаете перезапустить игру? Иначе поле изменится после этой игры.'))
             startGame();
