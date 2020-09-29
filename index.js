@@ -6,7 +6,7 @@ const AI = 'Компьютер'
 
 const container = document.getElementById('fieldWrapper');
 
-const INITIAL_GAMEFIELD_LENGTH = 3;
+let initialGameFieldLength = 3;
 let autoEnlargement = false;
 
 let gameField;
@@ -20,10 +20,24 @@ let winnerString = `${EMPTY} победил`;
 let clickCounter = 0;
 let possibleClicksCount;
 
-startGame();
-addAutoEnlargementListener();
-addResetListener();
-addAIListener();
+function prepareGame () {
+    startGame();
+    addAutoEnlargementListener();
+    addResetListener();
+    addAIListener();
+    addFieldLengthListener();
+    tryChangeInitialGameFieldLength();
+}
+
+prepareGame();
+
+function tryChangeInitialGameFieldLength () {
+    let lengthBeforeChange = initialGameFieldLength;
+    initialGameFieldLength = prompt('Какой длины будет начальное поле?', "3");
+    if (lengthBeforeChange !== initialGameFieldLength)
+        if (confirm('Желаете перезапустить игру? Иначе поле изменится после этой игры.'))
+            startGame();
+}
 
 function makeNewEmptyArray(gameField) {
     let dimension = gameField.length;
@@ -67,7 +81,7 @@ function updatePossibleClicksCount () {
 }
 
 function startGame () {
-    initGameField(INITIAL_GAMEFIELD_LENGTH);
+    initGameField(initialGameFieldLength);
     renderGrid(gameField.length);
     setTurn();
 }
@@ -403,6 +417,11 @@ function addAutoEnlargementListener () {
     autoEnlargementButton.addEventListener('click', autoEnlargementClickHandler);
 }
 
+function addFieldLengthListener () {
+    const fieldLengthButton = document.getElementById('fieldLength');
+    fieldLengthButton.addEventListener('click', fieldLengthClickHandler);
+}
+
 function addAIListener () {
     const AISwitch = document.getElementById('AI');
     AISwitch.addEventListener('change', AISwitchChangeHandler);
@@ -411,6 +430,10 @@ function addAIListener () {
 function resetClickHandler () {
     startGame();
     console.log('reset!');
+}
+
+function fieldLengthClickHandler () {
+    tryChangeInitialGameFieldLength();
 }
 
 function autoEnlargementClickHandler () {
